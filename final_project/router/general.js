@@ -3,6 +3,7 @@ let books = require("./booksdb.js");
 let isValid = require("./auth_users.js").isValid;
 let users = require("./auth_users.js").users;
 const public_users = express.Router();
+const axios = require("axios");
 
 public_users.post("/register", (req, res) => {
   const { username, password } = req.body;
@@ -18,18 +19,35 @@ public_users.post("/register", (req, res) => {
   return res.status(200).json({ message: "User registered successfully" });
 });
 
-public_users.get("/", function (req, res) {
-  //  Send JSON response with formatted books data
-  if (books === null || books === undefined) {
-    return res.status(500).json({ message: "Internal Server Error" });
+// public_users.get("/", function (req, res) {
+//   //  Send JSON response with formatted books data
+//   if (books === null || books === undefined) {
+//     return res.status(500).json({ message: "Internal Server Error" });
+//   }
+//   res.send(JSON.stringify(books, null, 2));
+// });
+
+public_users.get("/", async (req, res) => {
+  try {
+    const response = await axios.get("http://localhost:5000/");
+
+    if (!response.data) {
+      return res
+        .status(500)
+        .json({ message: "Internal Server Error: No books data found" });
+    }
+
+    res.status(200).json(response.data);
+  } catch (error) {
+    console.error("Error fetching books data:", error.message);
+    res.status(500).json({ message: "Internal Server Error" });
   }
-  res.send(JSON.stringify(books, null, 2));
 });
 
 public_users.get("/isbn/:isbn", function (req, res) {
   // Get book details based on ISBN
-  let isbn = req.params.isbn;
-  let book = books[isbn];
+  const { isbn } = req.params;
+  const book = books[isbn];
   if (book) {
     return res.status(200).json(book);
   } else {
@@ -39,7 +57,7 @@ public_users.get("/isbn/:isbn", function (req, res) {
 
 // Get book details based on author
 public_users.get("/author/:author", (req, res) => {
-  const { author } = req.params; // Extract the author parameter
+  const { author } = req.params;
 
   try {
     const booksByAuthor = Object.values(books).filter(
